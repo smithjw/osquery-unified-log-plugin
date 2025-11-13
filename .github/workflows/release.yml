@@ -12,27 +12,40 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - id: tool_versions
+        run: |
+          GO_VERSION=$(yq -oy '.tools.go' mise.toml)
+
+          echo "GO_VERSION=$GO_VERSION" >> $GITHUB_OUTPUT
+
       - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: '1.25.x'
+          go-version: ${{ steps.tool_versions.outputs.GO_VERSION }}
+          cache-dependency-path: go.sum
 
-      - name: Build arm64
-        run: |
-          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
-          CC="clang -arch arm64" go build -trimpath -ldflags="-s -w" \
-            -o dist/unifiedlog.ext.arm64 ./cmd/unifiedlog-ext
-
-      - name: Build amd64
-        run: |
-          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-          CC="clang -arch x86_64" go build -trimpath -ldflags="-s -w" \
-            -o dist/unifiedlog.ext.amd64 ./cmd/unifiedlog-ext
-
-      - name: Lipo universal
+      - name: Install Dependencies
         run: |
           mkdir -p dist
+          go mod download
+
+      - name: Build Binaries
+        run: |
+          # Build arm64
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+            CC="clang -arch arm64" go build -trimpath -ldflags="-s -w" \
+            -o dist/unifiedlog.ext.arm64 ./cmd/unifiedlog-ext
+
+          # Build amd64
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
+            CC="clang -arch x86_64" go build -trimpath -ldflags="-s -w" \
+            -o dist/unifiedlog.ext.amd64 ./cmd/unifiedlog-ext
+
+          # Create Universal Binary
           lipo -create -output dist/unifiedlog.ext \
             dist/unifiedlog.ext.arm64 dist/unifiedlog.ext.amd64
+
+          # Generate SHA256 checksum
           shasum -a 256 dist/unifiedlog.ext > dist/unifiedlog.ext.sha256
 
       - name: Release
