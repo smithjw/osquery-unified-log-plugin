@@ -12,8 +12,8 @@ env:
   MUNKIPKG_VERSION: a37c26aabfad8183ef4ce26d847832235a4497f1
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build_package:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
@@ -45,25 +45,6 @@ jobs:
           lipo -create -output dist/unifiedlog-"$REF_NAME" \
             dist/unifiedlog.ext.arm64 dist/unifiedlog.ext.amd64
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: unifiedlog-binary
-          path: dist/unifiedlog-*
-          retention-days: 1
-
-  package:
-    runs-on: macos-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          name: unifiedlog-binary
-          path: dist
-
       - name: Install munkipkg
         run: |
           curl "https://raw.githubusercontent.com/munki/munki-pkg/${{ env.MUNKIPKG_VERSION }}/munkipkg" -o munkipkg
@@ -92,25 +73,21 @@ jobs:
       - name: Upload Package Artifact
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: unifiedlog-package
-          path: dist/*.pkg
+          name: unifiedlog-artifacts
           retention-days: 1
+          path: |
+            dist/unifiedlog-*
+            dist/*.pkg
 
   release:
     runs-on: ubuntu-latest
-    needs: [build, package]
+    needs: build_package
     if: github.event_name == 'push'
     steps:
       - name: Download Build Artifact
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
-          name: unifiedlog-binary
-          path: dist
-
-      - name: Download Package Artifact
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          name: unifiedlog-package
+          name: unifiedlog-artifacts
           path: dist
 
       - name: Create Release
