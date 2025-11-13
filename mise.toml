@@ -1,0 +1,36 @@
+[tools]
+go = "latest"
+
+[env]
+# You can override these when running tasks (e.g., SUBSYSTEM=com.cba.osquery mise run build)
+APP = "unifiedlog.ext"
+PKG = "./cmd/unifiedlog-ext"
+DIST = "dist"
+SOCKET = "/var/osquery/osquery.em"
+SUBSYSTEM = "com.github.smithjw.osquery-unified-log-plugin"
+CATEGORY = "results"
+
+# --- Core workflow -----------------------------------------------------------
+
+[tasks.setup]
+description = "Ensure Go modules are tidy and Xcode CLT is available"
+run = [
+  'xcode-select -p >/dev/null || { echo "Xcode Command Line Tools not installed"; exit 1; }',
+  "go mod tidy",
+]
+
+[tasks.build]  # universal2: arm64 + x86_64
+description = "Build universal2 (arm64+amd64) plugin to dist/${APP}"
+depends = ["setup"]
+run = [
+  'mkdir -p "{{env.DIST}}"',
+  # arm64 slice
+  'CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 CC="clang -arch arm64" go build -trimpath -ldflags="-s -w" -o "{{env.DIST}}/{{env.APP}}.arm64" "{{env.PKG}}"',
+  # amd64 slice
+  'CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 CC="clang -arch x86_64" go build -trimpath -ldflags="-s -w" -o "{{env.DIST}}/{{env.APP}}.amd64" "{{env.PKG}}"',
+  # combine
+  'lipo -create -output "{{env.DIST}}/{{env.APP}}" "{{env.DIST}}/{{env.APP}}.arm64" "{{env.DIST}}/{{env.APP}}.amd64"',
+  'rm -f "{{env.DIST}}/{{env.APP}}.arm64" "{{env.DIST}}/{{env.APP}}.amd64"',
+  'shasum -a 256 "{{env.DIST}}/{{env.APP}}" > "{{env.DIST}}/{{env.APP}}.sha256"',
+  'file "{{env.DIST}}/{{env.APP}}" && cat "{{env.DIST}}/{{env.APP}}.sha256"',
+]
