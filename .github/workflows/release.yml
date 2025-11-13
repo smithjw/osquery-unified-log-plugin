@@ -24,6 +24,8 @@ jobs:
           go mod download
 
       - name: Build Binaries
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           # Build arm64
           CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
@@ -36,15 +38,14 @@ jobs:
             -o dist/unifiedlog.ext.amd64 ./cmd/unifiedlog-ext
 
           # Create Universal Binary
-          lipo -create -output dist/unifiedlog.ext \
+          lipo -create -output dist/unifiedlog-"$REF_NAME" \
             dist/unifiedlog.ext.arm64 dist/unifiedlog.ext.amd64
 
           # Generate SHA256 checksum
-          shasum -a 256 dist/unifiedlog.ext > dist/unifiedlog.ext.sha256
+          shasum -a 256 dist/unifiedlog-"$REF_NAME" > dist/unifiedlog-"$REF_NAME".sha256
 
       - name: Release
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
         with:
           files: |
-            dist/unifiedlog.ext
-            dist/unifiedlog.ext.sha256
+            dist/unifiedlog-*
