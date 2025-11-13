@@ -1,0 +1,10 @@
+{
+    "distribution_style": true,
+    "identifier": "com.github.smithjw.osquery-unified-log-plugin",
+    "install_location": "/",
+    "name": "osquery-unified-log-plugin-${version}.pkg",
+    "ownership": "recommended",
+    "postinstall_action": "none",
+    "suppress_bundle_relocation": true,
+    "version": "1.0.0"
+}
